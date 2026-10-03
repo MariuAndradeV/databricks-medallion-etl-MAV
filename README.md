@@ -145,17 +145,17 @@ Los grupos son de cuenta, creados desde la configuración del workspace. Los gra
 
 ## Evidencias
 
-| Evidencia | Captura |
-|---|---|
-| Servicios aprovisionados en Azure | ![](evidencias/01_recursos_azure.png) |
-| Conexión con Managed Identity | ![](evidencias/02_external_location_test.png) |
-| Tablas en Unity Catalog | ![](evidencias/03_catalogo_tablas.png) |
-| Workflow ejecutado en prod | ![](evidencias/04_workflow_prod.png) |
-| GitHub Actions exitoso | ![](evidencias/05_github_actions.png) |
-| Grants aplicados | ![](evidencias/06_grants.png) |
+Todas las capturas están en la carpeta [`evidencias`](evidencias/), numeradas en el orden del proyecto. Entre ellas:
+
+- Servicios aprovisionados en Azure (grupo de recursos, storage, Access Connector y workspaces).
+- Conexión al Data Lake con Managed Identity (storage credential y test de la external location).
+- Catálogo en Unity Catalog con sus tablas bronze, silver y golden, y datos cargados en golden.
+- Workflow `peliculas_medallion_prod` ejecutado con éxito en producción (8 tareas en serverless).
+- Pipeline de GitHub Actions ejecutado con éxito.
+- Permisos aplicados a los grupos (`SHOW GRANTS`).
 
 ## Dashboard
 
-![](dashboard/dashboard.png)
+En la carpeta [`dashboard`](dashboard/) están las capturas del dashboard, su exportación (`.lvdash.json`) y el enlace (`enlace.txt`).
 
-El enlace al dashboard publicado está en `dashboard/enlace.txt`.
+El dashboard se construyó con Databricks AI/BI sobre las tablas golden de `peliculas_prod`. Tres visualizaciones consultan silver porque necesitan el detalle por película. El acceso al enlace está restringido a usuarios de la cuenta de Databricks, por el gobierno de Unity Catalog.
