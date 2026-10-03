@@ -1,0 +1,1534 @@
+{
+  "datasets": [
+    {
+      "name": "4bb58e4f",
+      "displayName": "kpi_anual",
+      "config": {
+        "version": "1.1",
+        "source": "peliculas_prod.golden.kpi_anual",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "0e2c6b16",
+      "displayName": "kpi_genero",
+      "config": {
+        "version": "1.1",
+        "source": "peliculas_prod.golden.kpi_genero",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "f1284bd9",
+      "displayName": "top_directores",
+      "config": {
+        "version": "1.1",
+        "source": "peliculas_prod.golden.top_directores",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "012f94b9",
+      "displayName": "top_peliculas_genero",
+      "config": {
+        "version": "1.1",
+        "source": "peliculas_prod.golden.top_peliculas_genero",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "db7d790e",
+      "displayName": "peliculas_detalle",
+      "queryLines": [
+        "-- peliculas_detalle: alimenta indicadores, idiomas, duración y dispersión\n",
+        "SELECT\n",
+        "  titulo,\n",
+        "  genero_principal AS genero,\n",
+        "  idioma,\n",
+        "  decada,\n",
+        "  anio_estreno,\n",
+        "  categoria_duracion,\n",
+        "  categoria_puntuacion,\n",
+        "  puntuacion,\n",
+        "  votos,\n",
+        "  presupuesto_usd / 1e6 AS presupuesto_millones,\n",
+        "  ingresos_usd / 1e6 AS ingresos_millones,\n",
+        "  roi\n",
+        "FROM\n",
+        "  peliculas_prod.silver.peliculas"
+      ]
+    },
+    {
+      "name": "b29e96a5",
+      "displayName": "genero_decada",
+      "queryLines": [
+        "-- genero_decada: mapa de calor\n",
+        "SELECT\n",
+        "  genero,\n",
+        "  CAST(FLOOR(anio_estreno / 10) * 10 AS INT) AS decada,\n",
+        "  COUNT(*) AS total_peliculas,\n",
+        "  ROUND(AVG(puntuacion), 2) AS puntuacion_promedio\n",
+        "FROM\n",
+        "  peliculas_prod.silver.peliculas_genero\n",
+        "WHERE\n",
+        "  anio_estreno >= 1950\n",
+        "GROUP BY\n",
+        "  ALL"
+      ]
+    },
+    {
+      "name": "415b4951",
+      "displayName": "roi_genero",
+      "queryLines": [
+        "-- roi_genero: rentabilidad típica por género (mediana, no la distorsionan los éxitos extremos)\n",
+        "SELECT\n",
+        "  genero_principal AS genero,\n",
+        "  COUNT(*) AS peliculas,\n",
+        "  ROUND(PERCENTILE_APPROX(roi, 0.5), 2) AS roi_mediano\n",
+        "FROM\n",
+        "  peliculas_prod.silver.peliculas\n",
+        "WHERE\n",
+        "  roi IS NOT NULL\n",
+        "GROUP BY\n",
+        "  genero_principal\n",
+        "HAVING\n",
+        "  COUNT(*) >= 50"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "e8e857b9",
+      "displayName": "Canva",
+      "layout": [
+        {
+          "widget": {
+            "name": "bar_genero_peliculas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "0e2c6b16",
+                  "fields": [
+                    {
+                      "name": "genero",
+                      "expression": "`genero`"
+                    },
+                    {
+                      "name": "total_peliculas",
+                      "expression": "`total_peliculas`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Películas por Género"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "genero",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "total_peliculas",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_genero_ingresos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "0e2c6b16",
+                  "fields": [
+                    {
+                      "name": "genero",
+                      "expression": "`genero`"
+                    },
+                    {
+                      "name": "ingresos_totales_usd",
+                      "expression": "`ingresos_totales_usd`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Ingresos Totales por Género"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "genero",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "ingresos_totales_usd",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "line_anual_peliculas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "4bb58e4f",
+                  "fields": [
+                    {
+                      "name": "anio_estreno",
+                      "expression": "`anio_estreno`"
+                    },
+                    {
+                      "name": "total_peliculas",
+                      "expression": "`total_peliculas`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Películas por Año de Estreno"
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "anio_estreno",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "total_peliculas",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tabla_top_directores",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f1284bd9",
+                  "fields": [
+                    {
+                      "name": "ranking",
+                      "expression": "`ranking`"
+                    },
+                    {
+                      "name": "director",
+                      "expression": "`director`"
+                    },
+                    {
+                      "name": "total_peliculas",
+                      "expression": "`total_peliculas`"
+                    },
+                    {
+                      "name": "puntuacion_promedio",
+                      "expression": "`puntuacion_promedio`"
+                    },
+                    {
+                      "name": "total_votos",
+                      "expression": "`total_votos`"
+                    },
+                    {
+                      "name": "ingresos_totales_usd",
+                      "expression": "`ingresos_totales_usd`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`ranking` <= 10"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 Directores"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "ranking"
+                  },
+                  {
+                    "fieldName": "director"
+                  },
+                  {
+                    "fieldName": "total_peliculas"
+                  },
+                  {
+                    "fieldName": "puntuacion_promedio"
+                  },
+                  {
+                    "fieldName": "total_votos"
+                  },
+                  {
+                    "fieldName": "ingresos_totales_usd"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 18,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w01_titulo",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## <span style=\"text-align:center;display:block\"><span style=\"font-size: 36px;line-height: 1.5;color: #077A9D;\">Análisis de películas</span></span>\n",
+                "\n",
+                "<span style=\"text-align:center;display:block\"><span style=\"font-size:14px\">Fuente: TMDb vía Kaggle · Capas silver y golden de Unity Catalog (catálogo peliculas\\_prod)</span></span>"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w02_filtro_genero",
+            "queries": [
+              {
+                "name": "dashboards/01f1bf6852221114a8493e570dae77bf/datasets/01f1bf694bfe1350abee135ca199eee3_genero",
+                "query": {
+                  "datasetName": "0e2c6b16",
+                  "fields": [
+                    {
+                      "name": "genero",
+                      "expression": "`genero`"
+                    },
+                    {
+                      "name": "genero_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"font-size: 14px;font-weight: 700;color: #077A9D;\">Género</span>",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "genero",
+                    "queryName": "dashboards/01f1bf6852221114a8493e570dae77bf/datasets/01f1bf694bfe1350abee135ca199eee3_genero"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w03_filtro_decada",
+            "queries": [
+              {
+                "name": "dashboards/01f1bf6852221114a8493e570dae77bf/datasets/01f1bf694a3c1d09b9c037451ae565b5_decada",
+                "query": {
+                  "datasetName": "4bb58e4f",
+                  "fields": [
+                    {
+                      "name": "decada",
+                      "expression": "`decada`"
+                    },
+                    {
+                      "name": "decada_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"color: #077A9D;font-weight: 700;font-size: 14px;\">Década</span>",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "decada",
+                    "queryName": "dashboards/01f1bf6852221114a8493e570dae77bf/datasets/01f1bf694a3c1d09b9c037451ae565b5_decada"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w04_cnt_peliculas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "db7d790e",
+                  "fields": [
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"font-weight: 700;font-size: 14px;color: #077A9D;\">Películas</span>",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(*)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w06_cnt_votos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "db7d790e",
+                  "fields": [
+                    {
+                      "name": "sum(votos)",
+                      "expression": "SUM(`votos`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"font-size: 14px;color: #077A9D;font-weight: 700;\">Votos totales</span>",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(votos)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 4,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w07_cnt_idiomas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "db7d790e",
+                  "fields": [
+                    {
+                      "name": "countdistinct(idioma)",
+                      "expression": "COUNT(DISTINCT `idioma`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"color: #077A9D;font-size: 14px;font-weight: 700;\">Idiomas</span>",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(idioma)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 7,
+            "y": 4,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w08_cnt_ingresos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "db7d790e",
+                  "fields": [
+                    {
+                      "name": "sum(ingresos_millones)",
+                      "expression": "SUM(`ingresos_millones`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"font-weight: 700;font-size: 14px;color: #077A9D;\">Ingresos totales (USD M)</span>",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(ingresos_millones)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 4,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w09_bar_h_genero_peliculas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "0e2c6b16",
+                  "fields": [
+                    {
+                      "name": "total_peliculas",
+                      "expression": "`total_peliculas`"
+                    },
+                    {
+                      "name": "genero",
+                      "expression": "`genero`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "¿Qué géneros tienen más películas?"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "total_peliculas",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "genero",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w10_bar_ingresos_ganancia",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "0e2c6b16",
+                  "fields": [
+                    {
+                      "name": "genero",
+                      "expression": "`genero`"
+                    },
+                    {
+                      "name": "ingresos_totales_usd",
+                      "expression": "`ingresos_totales_usd`"
+                    },
+                    {
+                      "name": "ganancia_total_usd",
+                      "expression": "`ganancia_total_usd`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "¿Qué géneros generan más ingresos y ganancia?"
+              },
+              "version": 3,
+              "mark": {
+                "layout": "group"
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "genero",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fields": [
+                    {
+                      "fieldName": "ingresos_totales_usd",
+                      "displayName": "Ingresos totales"
+                    },
+                    {
+                      "fieldName": "ganancia_total_usd",
+                      "displayName": "Ganancia total"
+                    }
+                  ],
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-currency",
+                    "abbreviation": "compact",
+                    "currencyCode": "USD"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w11_line_peliculas_anio",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "4bb58e4f",
+                  "fields": [
+                    {
+                      "name": "anio_estreno",
+                      "expression": "`anio_estreno`"
+                    },
+                    {
+                      "name": "total_peliculas",
+                      "expression": "`total_peliculas`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Películas estrenadas por año"
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "anio_estreno",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "total_peliculas",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w12_line_puntuacion_anio",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "4bb58e4f",
+                  "fields": [
+                    {
+                      "name": "anio_estreno",
+                      "expression": "`anio_estreno`"
+                    },
+                    {
+                      "name": "puntuacion_promedio",
+                      "expression": "`puntuacion_promedio`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "¿Cómo cambió la puntuación con los años?"
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "anio_estreno",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "puntuacion_promedio",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w13_heatmap_genero_decada",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "b29e96a5",
+                  "fields": [
+                    {
+                      "name": "total_peliculas",
+                      "expression": "`total_peliculas`"
+                    },
+                    {
+                      "name": "decada",
+                      "expression": "`decada`"
+                    },
+                    {
+                      "name": "genero",
+                      "expression": "`genero`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Géneros por década"
+              },
+              "version": 3,
+              "widgetType": "heatmap",
+              "encodings": {
+                "x": {
+                  "fieldName": "decada",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "genero",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "color": {
+                  "fieldName": "total_peliculas",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w14_scatter_presupuesto_ingresos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "db7d790e",
+                  "fields": [
+                    {
+                      "name": "categoria_puntuacion",
+                      "expression": "`categoria_puntuacion`"
+                    },
+                    {
+                      "name": "presupuesto_millones",
+                      "expression": "`presupuesto_millones`"
+                    },
+                    {
+                      "name": "ingresos_millones",
+                      "expression": "`ingresos_millones`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "¿Más presupuesto significa más ingresos? (USD M)"
+              },
+              "version": 3,
+              "widgetType": "scatter",
+              "encodings": {
+                "x": {
+                  "fieldName": "presupuesto_millones",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "ingresos_millones",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "categoria_puntuacion",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 18,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w15_bar_roi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "415b4951",
+                  "fields": [
+                    {
+                      "name": "roi_mediano",
+                      "expression": "`roi_mediano`"
+                    },
+                    {
+                      "name": "genero",
+                      "expression": "`genero`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "¿Qué género es más rentable? (ROI mediano)"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "roi_mediano",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "genero",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 24,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w16_bar_directores",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f1284bd9",
+                  "fields": [
+                    {
+                      "name": "puntuacion_promedio",
+                      "expression": "`puntuacion_promedio`"
+                    },
+                    {
+                      "name": "director",
+                      "expression": "`director`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`ranking` <= 10"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 directores por puntuación (3 o más películas)"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "puntuacion_promedio",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "director",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 24,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w17_bar_idiomas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "db7d790e",
+                  "fields": [
+                    {
+                      "name": "idioma",
+                      "expression": "`idioma`"
+                    },
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`idioma` IN ('en','fr','de','es','ja','it','ko','pt','hi','zh')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Top 10 idiomas",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "idioma",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "count(*)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 30,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w18_pie_duracion",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "db7d790e",
+                  "fields": [
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    },
+                    {
+                      "name": "categoria_duracion",
+                      "expression": "`categoria_duracion`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Películas por duración"
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "count(*)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "categoria_duracion",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 30,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w19_tabla_top_peliculas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "012f94b9",
+                  "fields": [
+                    {
+                      "name": "genero",
+                      "expression": "`genero`"
+                    },
+                    {
+                      "name": "ranking",
+                      "expression": "`ranking`"
+                    },
+                    {
+                      "name": "titulo",
+                      "expression": "`titulo`"
+                    },
+                    {
+                      "name": "puntuacion",
+                      "expression": "`puntuacion`"
+                    },
+                    {
+                      "name": "votos",
+                      "expression": "`votos`"
+                    },
+                    {
+                      "name": "anio_estreno",
+                      "expression": "`anio_estreno`"
+                    },
+                    {
+                      "name": "poster_url",
+                      "expression": "`poster_url`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 películas por género"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "genero"
+                  },
+                  {
+                    "fieldName": "ranking"
+                  },
+                  {
+                    "fieldName": "titulo"
+                  },
+                  {
+                    "fieldName": "puntuacion"
+                  },
+                  {
+                    "fieldName": "votos"
+                  },
+                  {
+                    "fieldName": "anio_estreno"
+                  },
+                  {
+                    "fieldName": "poster_url"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 36,
+            "width": 12,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "w20_hallazgos",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Hallazgos principales\n",
+                "\n",
+                "- **Horror es el género más rentable**: su ROI mediano es 2,08 — una película típica gana unas dos veces lo que costó.\n",
+                "- **Las películas antiguas puntúan más alto** (entre 7,4 y 7,8 de 1920 a 1950, frente a 6,47 en los 2000), probablemente por sesgo de supervivencia: del pasado solo perduran los clásicos.\n",
+                "- **Las películas de más de 150 minutos** promedian 7,42, frente a 6,47 de las de menos de 90.\n",
+                "- **Drama tiene más títulos**, pero Adventure genera más ingresos.\n",
+                "- **El 79 % del catálogo está en inglés.**"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 44,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w05_cnt_puntuacion",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "db7d790e",
+                  "fields": [
+                    {
+                      "name": "avg(puntuacion)",
+                      "expression": "AVG(`puntuacion`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"font-weight: 700;font-size: 14px;color: #077A9D;\">Puntuación promedio</span>",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(puntuacion)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 4,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w21_filtro_categoria_puntuacion",
+            "queries": [
+              {
+                "name": "dashboards/01f1bf6852221114a8493e570dae77bf/datasets/01f1bf6a82d41bc39d8124410f0fe453_categoria_puntuacion",
+                "query": {
+                  "datasetName": "db7d790e",
+                  "fields": [
+                    {
+                      "name": "categoria_puntuacion",
+                      "expression": "`categoria_puntuacion`"
+                    },
+                    {
+                      "name": "categoria_puntuacion_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"color: #077A9D;font-size: 14px;font-weight: 700;\">Categoría de puntuación</span>",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "categoria_puntuacion",
+                    "queryName": "dashboards/01f1bf6852221114a8493e570dae77bf/datasets/01f1bf6a82d41bc39d8124410f0fe453_categoria_puntuacion"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 2,
+            "width": 4,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}

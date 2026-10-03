@@ -1,0 +1,7 @@
+Dashboard: Dashboard Películas MAV
+
+Plataforma: Databricks AI/BI Dashboard (workspace dbw-peliculas-prod)
+
+Enlace: https://adb-7405619653624331.11.azuredatabricks.net/dashboardsv3/01f1bf6852221114a8493e570dae77bf/published?o=7405619653624331
+
+Las capturas de esta carpeta muestran el dashboard completo.
