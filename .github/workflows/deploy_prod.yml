@@ -1,1 +1,89 @@
+name: CI/CD - Despliegue ETL a produccion
 
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "proceso/**"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+env:
+  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+  RUTA_PROD: /Shared/peliculas_medallion/proceso
+  NOMBRE_JOB: peliculas_medallion_prod
+  DEFINICION_JOB: .github/workflows/job_prod.json
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validar:
+    name: Validar codigo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validar sintaxis de los notebooks
+        run: |
+          for f in proceso/*.py; do
+            python -m py_compile "$f" && echo "OK $f"
+          done
+
+      - name: Validar definicion del job
+        run: jq empty "$DEFINICION_JOB" && echo "JSON valido"
+
+  desplegar:
+    name: Desplegar y ejecutar en prod
+    needs: validar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Verificar conexion con el workspace prod
+        run: databricks current-user me --output json | jq '{userName, active}'
+
+      - name: Desplegar notebooks de la carpeta proceso
+        run: |
+          databricks workspace mkdirs "$RUTA_PROD"
+          databricks workspace import-dir proceso "$RUTA_PROD" --overwrite
+          databricks workspace list "$RUTA_PROD"
+
+      - name: Crear o actualizar el workflow
+        run: |
+          JOB_ID=$(databricks jobs list --output json \
+            | jq -r --arg n "$NOMBRE_JOB" '(if type == "array" then . else (.jobs // []) end) | .[] | select(.settings.name == $n) | .job_id' \
+            | head -n 1)
+
+          if [ -z "$JOB_ID" ]; then
+            JOB_ID=$(databricks jobs create --json @"$DEFINICION_JOB" --output json | jq -r '.job_id')
+            echo "Workflow creado: $JOB_ID"
+          else
+            jq --argjson id "$JOB_ID" '{job_id: $id, new_settings: .}' "$DEFINICION_JOB" > /tmp/reset_job.json
+            databricks jobs reset --json @/tmp/reset_job.json
+            echo "Workflow actualizado: $JOB_ID"
+          fi
+
+          echo "JOB_ID=$JOB_ID" >> "$GITHUB_ENV"
+
+      - name: Ejecutar el workflow en prod
+        run: |
+          set +e
+          databricks jobs run-now "$JOB_ID" --timeout 40m --output json > /tmp/run.json
+          set -e
+
+          jq '{run_id, run_page_url, estado: .state}' /tmp/run.json
+          RESULTADO=$(jq -r '.state.result_state // "DESCONOCIDO"' /tmp/run.json)
+
+          if [ "$RESULTADO" != "SUCCESS" ]; then
+            echo "::error::El workflow termino con estado $RESULTADO"
+            exit 1
+          fi
+          echo "Workflow ejecutado correctamente"
