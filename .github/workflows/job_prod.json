@@ -1,0 +1,84 @@
+{
+  "name": "peliculas_medallion_prod",
+  "description": "ETL medallion de peliculas: prepamb -> ingestas en paralelo -> transform -> load -> grants",
+  "max_concurrent_runs": 1,
+  "timeout_seconds": 3600,
+  "tags": {
+    "proyecto": "peliculas_medallion",
+    "entorno": "prod"
+  },
+  "parameters": [
+    { "name": "entorno", "default": "prod" },
+    { "name": "storage_account", "default": "adlspeliculas2003" }
+  ],
+  "tasks": [
+    {
+      "task_key": "prepamb",
+      "notebook_task": {
+        "notebook_path": "/Shared/peliculas_medallion/proceso/01_prepamb",
+        "source": "WORKSPACE"
+      }
+    },
+    {
+      "task_key": "ingest_movies",
+      "depends_on": [{ "task_key": "prepamb" }],
+      "notebook_task": {
+        "notebook_path": "/Shared/peliculas_medallion/proceso/02_ingest_movies",
+        "source": "WORKSPACE"
+      }
+    },
+    {
+      "task_key": "ingest_film_details",
+      "depends_on": [{ "task_key": "prepamb" }],
+      "notebook_task": {
+        "notebook_path": "/Shared/peliculas_medallion/proceso/03_ingest_film_details",
+        "source": "WORKSPACE"
+      }
+    },
+    {
+      "task_key": "ingest_more_info",
+      "depends_on": [{ "task_key": "prepamb" }],
+      "notebook_task": {
+        "notebook_path": "/Shared/peliculas_medallion/proceso/04_ingest_more_info",
+        "source": "WORKSPACE"
+      }
+    },
+    {
+      "task_key": "ingest_poster_path",
+      "depends_on": [{ "task_key": "prepamb" }],
+      "notebook_task": {
+        "notebook_path": "/Shared/peliculas_medallion/proceso/05_ingest_poster_path",
+        "source": "WORKSPACE"
+      }
+    },
+    {
+      "task_key": "transform",
+      "depends_on": [
+        { "task_key": "ingest_movies" },
+        { "task_key": "ingest_film_details" },
+        { "task_key": "ingest_more_info" },
+        { "task_key": "ingest_poster_path" }
+      ],
+      "notebook_task": {
+        "notebook_path": "/Shared/peliculas_medallion/proceso/06_transform",
+        "source": "WORKSPACE"
+      }
+    },
+    {
+      "task_key": "load",
+      "depends_on": [{ "task_key": "transform" }],
+      "notebook_task": {
+        "notebook_path": "/Shared/peliculas_medallion/proceso/07_load",
+        "source": "WORKSPACE"
+      }
+    },
+    {
+      "task_key": "grants",
+      "depends_on": [{ "task_key": "load" }],
+      "notebook_task": {
+        "notebook_path": "/Shared/peliculas_medallion/proceso/08_grants",
+        "source": "WORKSPACE"
+      }
+    }
+  ]
+}
